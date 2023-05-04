@@ -9,6 +9,8 @@ import SpriteKit
 
 class GameScene: SKScene, SKPhysicsContactDelegate {
     
+    var balls = ["ballRed", "ballCyan", "ballYellow", "ballGrey", "ballBlue", "ballGreen", "ballPurple"]
+    
     var editLabel: SKLabelNode!
     var editingMode: Bool = false {
         didSet {
@@ -83,7 +85,9 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                     box.physicsBody?.isDynamic = false
                     addChild(box)
                 } else {
-                    let ball = SKSpriteNode(imageNamed: "ballCyan")
+                    balls.shuffle()
+                    
+                    let ball = SKSpriteNode(imageNamed: balls[0])
                     ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2.0)
                     ball.physicsBody!.contactTestBitMask = ball.physicsBody!.collisionBitMask
                     ball.physicsBody?.restitution = 0.4
