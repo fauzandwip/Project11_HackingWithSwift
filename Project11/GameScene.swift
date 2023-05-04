@@ -22,10 +22,21 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         }
     }
     
+    var box: SKSpriteNode!
+    var ball: SKSpriteNode!
+    var restart: SKLabelNode!
+    
     var scoreLabel: SKLabelNode!
     var score = 0 {
         didSet {
             scoreLabel.text = "Score: \(score)"
+        }
+    }
+    
+    var totalBalls: SKLabelNode!
+    var ballLimit = 5 {
+        didSet {
+            totalBalls.text = "Total Balls: \(ballLimit)"
         }
     }
     
@@ -53,6 +64,20 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         scoreLabel.zPosition = 1
         addChild(scoreLabel)
         
+        totalBalls = SKLabelNode(fontNamed: "Chalkduster")
+        totalBalls.text = "Total Balls: 5"
+        totalBalls.horizontalAlignmentMode = .center
+        totalBalls.position = CGPoint(x: 512, y: 700)
+        totalBalls.zPosition = 1
+        addChild(totalBalls)
+        
+        restart = SKLabelNode(fontNamed: "Chalkduster")
+        restart.text = "Restart"
+        restart.horizontalAlignmentMode = .left
+        restart.position = CGPoint(x: 80, y: 650)
+        restart.zPosition = 1
+        addChild(restart)
+        
         physicsBody = SKPhysicsBody(edgeLoopFrom: frame)
         
         makeSlot(at: CGPoint(x: 128, y: 0), isGood: true)
@@ -76,12 +101,31 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
             
             if objects.contains(editLabel) {
                 editingMode.toggle()
+            } else if objects.contains(restart) {
+                score = 0
+                ballLimit = 5
+                
+                self.enumerateChildNodes(withName: "box") { node, stop in
+                    if let fireParticles = SKEmitterNode(fileNamed: "FireParticles") {
+                        fireParticles.position = node.position
+                        self.addChild(fireParticles)
+                    }
+                    node.run(SKAction.removeFromParent())
+                 }
+                self.enumerateChildNodes(withName: "ball") { node, stop in
+                    if let fireParticles = SKEmitterNode(fileNamed: "FireParticles") {
+                        fireParticles.position = node.position
+                        self.addChild(fireParticles)
+                    }
+                    node.run(SKAction.removeFromParent())
+                 }
             } else {
                 if editingMode {
                     let size = CGSize(width: Int.random(in: 16...128), height: 16)
-                    let box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1), size: size)
+                    box = SKSpriteNode(color: UIColor(red: CGFloat.random(in: 0...1), green: CGFloat.random(in: 0...1), blue: CGFloat.random(in: 0...1), alpha: 1), size: size)
                     box.position = location
                     box.zRotation = CGFloat.random(in: 0...3)
+                    box.name = "box"
                     
                     box.physicsBody = SKPhysicsBody(rectangleOf: box.size)
                     box.physicsBody?.isDynamic = false
@@ -89,13 +133,17 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
                 } else {
                     balls.shuffle()
                     
-                    let ball = SKSpriteNode(imageNamed: balls[0])
-                    ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2.0)
-                    ball.physicsBody!.contactTestBitMask = ball.physicsBody!.collisionBitMask
-                    ball.physicsBody?.restitution = 0.4
-                    ball.position = CGPoint(x: location.x, y: 740)
-                    ball.name = "ball"
-                    addChild(ball)
+                    if ballLimit > 0 {
+                        ballLimit -= 1
+                        
+                        ball = SKSpriteNode(imageNamed: balls[0])
+                        ball.physicsBody = SKPhysicsBody(circleOfRadius: ball.size.width / 2.0)
+                        ball.physicsBody!.contactTestBitMask = ball.physicsBody!.collisionBitMask
+                        ball.physicsBody?.restitution = 0.4
+                        ball.position = CGPoint(x: location.x, y: 740)
+                        ball.name = "ball"
+                        addChild(ball)
+                    }
                 }
             }
         }
@@ -115,22 +163,25 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
     
     func collisionBetween(ball: SKNode, object: SKNode) {
         if object.name == "good" {
-            destroy(ball: ball)
+            destroy(nodeObject: ball)
             score += 1
+            ballLimit += 1
         } else if object.name == "bad" {
-            destroy(ball: ball)
+            destroy(nodeObject: ball)
             score -= 1
+        } else if object.name == "box" {
+            destroy(nodeObject: object)
         }
         
     }
     
-    func destroy(ball: SKNode) {
+    func destroy(nodeObject: SKNode) {
         if let fireParticles = SKEmitterNode(fileNamed: "FireParticles") {
-            fireParticles.position = ball.position
+            fireParticles.position = nodeObject.position
             addChild(fireParticles)
         }
         
-        ball.removeFromParent()
+        nodeObject.removeFromParent()
     }
     
     func makeBouncer(at position: CGPoint) {
@@ -157,6 +208,14 @@ class GameScene: SKScene, SKPhysicsContactDelegate {
         
         slotBase.position = position
         slotGlow.position = position
+        
+        if let fireParticles = SKEmitterNode(fileNamed: "FireParticles") {
+            fireParticles.position = position
+            fireParticles.numParticlesToEmit = 0
+            fireParticles.particleLifetime = 3
+            self.addChild(fireParticles)
+        }
+        
         slotBase.physicsBody = SKPhysicsBody(rectangleOf: slotBase.size)
         slotBase.physicsBody?.isDynamic = false
                 
